@@ -1,5 +1,7 @@
 package com.example.springMicroservices.orderService.service;
 
+import brave.Span;
+import brave.Tracer;
 import com.example.springMicroservices.orderService.dto.requestDto.OrderLineItemRequest;
 import com.example.springMicroservices.orderService.dto.requestDto.OrderRequest;
 import com.example.springMicroservices.orderService.dto.responceDto.OrderResponse;
@@ -29,23 +31,19 @@ public class OrderService {
                                            .map(OrderLineItemRequest::getSkuCode)
                                            .toList();
 
+
         InventoryResponse[] inventoryResponses = webClient.build().get()
-                                                          .uri("http://inventory-service/api/inventory",
-                                                                  uriBuilder -> uriBuilder
-                                                                          .queryParam("skuCode",skuCode)
-                                                                          .build())
-                                                          .retrieve()
-                                                          .bodyToMono(InventoryResponse[].class)
-                                                          .block();
-        assert inventoryResponses != null;
-        if(inventoryResponses.length==0){
+                                                              .uri("http://inventory-service/api/inventory",
+                                                                      uriBuilder -> uriBuilder
+                                                                              .queryParam("skuCode", skuCode).build())
+                                                              .retrieve().bodyToMono(InventoryResponse[].class).block();
+        System.out.println(inventoryResponses.length);
+        if (inventoryResponses.length == 0) {
             throw new IllegalArgumentException("Product out of stock");
         }
         boolean isInStock = Arrays.stream(inventoryResponses).allMatch(InventoryResponse::isInStock);
-        if(isInStock)
-            return orderMapper.mapToOrderResponseFromOrder(
-                orderRepository.save(orderMapper.mapToOrderFromOrderRequest(orderRequest)
-                        ));
+        if (isInStock)
+            return orderMapper.mapToOrderResponseFromOrder(orderRepository.save(orderMapper.mapToOrderFromOrderRequest(orderRequest)));
         else
             throw new IllegalArgumentException("Item is out of Stock");
     }
